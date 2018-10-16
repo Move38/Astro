@@ -1,29 +1,26 @@
 enum blinkRoles {ASTEROID, SHIP, DEPOT};
 byte blinkRole = ASTEROID;
 long millisHold = 0;
-long frameMillis;
-int oreInterval = 1000;
 
 Timer animTimer;
 byte animFrame = 0;
 
 ////ASTEROID VARIABLES
-bool isMinable = false;
-enum oreTypes {COPPER, PLUTONIUM, TUNGSTEN, COBALT};
-byte oreType;
-Color oreColors [4] = {ORANGE, GREEN, CYAN, MAGENTA};
-int oreCountdown;
-bool oreLocations[6];
+byte oreLayout[6];
+Color oreColors [5] = {OFF, ORANGE, GREEN, CYAN, YELLOW};
 Timer resetTimer;
-int resetInterval = 2000;
-
+int resetInterval = 4000;
+bool isMinable[6];
 
 ////SHIP VARIABLES
-bool isMining;
 byte miningFace = 0;
+byte missionCount = 3;
 bool missionComplete;
+bool isMining;
 byte oreTarget;
-int oreCollected;
+byte oreCollected;
+Timer canMine;
+int miningTime = 500;
 
 void setup() {
   // put your setup code here, to run once:
@@ -32,9 +29,6 @@ void setup() {
 }
 
 void loop() {
-  //how many millis happened since last frame?
-  frameMillis = millis() - millisHold;
-
   switch (blinkRole) {
     case ASTEROID:
       asteroidLoop();
@@ -46,12 +40,9 @@ void loop() {
       break;
     case DEPOT:
       depotLoop();
-      setColor(WHITE);
+      setColor(dim(WHITE, 25));
       break;
   }
-
-  //reset the millisHold
-  millisHold = millis();
 }
 
 void asteroidLoop() {
@@ -60,99 +51,115 @@ void asteroidLoop() {
     newMission();
   }
 
-  //check my neighbors, look for mining ships
-  byte miningNeighbors = 0;
+  //ok, so I'm hanging out, and a blink touches me. is it a ship asking for a thing I have?
   FOREACH_FACE(f) {
-    if (!isValueReceivedOnFaceExpired(f)) { //hey, a neighbor!
+    if (!isValueReceivedOnFaceExpired(f)) { //neighbor!
       byte neighborData = getLastValueReceivedOnFace(f);
-      if (getNeighborRole(neighborData) == SHIP && getShipMining(neighborData)) { //it's a ship, and it's mining
-        miningNeighbors++;
-      }
-    }
-  }
-  //now we know how many neighbors are mining. Decrement oreCountdown by that amount
-  oreCountdown -= frameMillis * miningNeighbors;
+      if (getBlinkRole(neighborData) == SHIP) { //a ship!
+        resetTimer.set(resetInterval);
+        byte oreRequest = getShipTarget(neighborData);//what does it want?
+        FOREACH_FACE(ff) {//do I have one?
+          if (oreLayout[ff] == oreRequest) {//yes
+            setColorOnFace(WHITE, ff);
+            isMinable[f] = true;//that face says "hey, I have one of those. take it"
+          }
+        }
 
-  if (oreCountdown < oreInterval) {
+        //now, if we are minable, check if that ship is currently mining
+        if (isMinable[f]) {
+          if (getShipMining(neighborData) == 1) { //oh that ship is mining. Our work is done!
+            isMinable[f] = false;
+            FOREACH_FACE(fff) {
+              if (oreLayout[fff] == oreRequest) {
+                oreLayout[fff] = 0;//remove that ore
+              }
+            }
+          }
+        }
+      } else {
+        isMinable[f] = false;
+      }//end of found ship check
+    } else {
+      isMinable[f] = false;
+    }//end of found neighbor check
+  }//end of face check
+
+
+  //let's check to see if we should renew ourselves!
+  if (resetTimer.isExpired()) {
+    newAsteroid();
     resetTimer.set(resetInterval);
   }
-
-  //also, if there is no ore left, make it
-  if (oreCountdown <= 0) {
-    isMinable = false;
-  }
-
-  //  if (resetTimer.isExpired()) {
-  //    newAsteroid();
-  //  }
-
   //set up communication
-  byte sendData = (blinkRole << 4) + (oreType << 2) + (isMinable << 1);
-  setValueSentOnAllFaces(sendData);
+  FOREACH_FACE(f) {
+    byte sendData = (blinkRole << 4) + (isMinable[f] << 3);
+    setValueSentOnFace(sendData, f);
+  }
 }
 
 void newAsteroid() {
-  isMinable = true;
-  oreType = rand(3);
-  byte oreCount = rand(2) + 1;
-  oreCountdown = oreInterval * oreCount;
-  //array the ore around the asteroid
-  FOREACH_FACE(f) {
-    if (f < oreCount) {
-      oreLocations[f] = true;
-    } else {
-      oreLocations[f] = false;
-    }
-  }
-  //shuffle the array
+  //default layout
+  oreLayout[0] = 1;
+  oreLayout[1] = 2;
+  oreLayout[2] = 3;
+  oreLayout[3] = 4;
+  oreLayout[4] = 0;
+  oreLayout[5] = 0;
+
+  //remove one or two of them
+  oreLayout[rand(4)] = 0;
+
+  //shuffle array
   for (byte i = 0; i < 10; i++) {
     byte swapA = rand(5);
     byte swapB = rand(5);
-    bool temp = oreLocations[swapA];
-    oreLocations[swapA] = oreLocations[swapB];
-    oreLocations[swapB] = temp;
+    byte temp = oreLayout[swapA];
+    oreLayout[swapA] = oreLayout[swapB];
+    oreLayout[swapB] = temp;
   }
-  resetTimer.set(NEVER);
 }
 
 void shipLoop() {
-  //first, should we change mode?
   if (buttonLongPressed()) {
     blinkRole = ASTEROID;
+    newAsteroid();
   }
 
-  //are we touching an asteroid with a compatible ore type?
-  isMining = false;
-  FOREACH_FACE(f) {
-    if (!isValueReceivedOnFaceExpired(f)) { //a neighbor!
-      byte neighborData = getLastValueReceivedOnFace(f);
-      if (getNeighborRole(neighborData) == ASTEROID) {//asteroid!
-        if (getAsteroidOreType(neighborData) == oreTarget && getAsteroidMinable(neighborData) == 1) { //the correct ore, and isMinable!
-          miningFace = f;
-          isMining = true;
+  //ok, so are we allowed to look around for mining purposes?
+  if (canMine.isExpired()) {
+    isMining = false;
+    //look at neighbors for an asteroid that is minable
+    FOREACH_FACE(f) {
+      if (!isValueReceivedOnFaceExpired(f)) { //neighbor!
+        byte neighborData = getLastValueReceivedOnFace(f);
+        if (getBlinkRole(neighborData) == ASTEROID) {//an asteroid!
+          if (getAsteroidMinable(neighborData) == 1) {
+            //we found one we can mine!
+            isMining = true;
+            oreCollected++;
+            canMine.set(miningTime);
+          }
         }
       }
     }
-  }//end of mining check
-
-  //if we are mining, we need to increment our ore and check for victory
-  if (isMining) {
-    oreCollected += frameMillis;
   }
 
-  if (oreCollected > oreInterval * 3) {
-    isMining = false;
+  if (oreCollected >= missionCount) {
     missionComplete = true;
   }
 
+  if (buttonDoubleClicked()) {
+    newMission();
+  }
+
   //set up communication
-  byte sendData = (blinkRole << 4) + (isMining << 3) + (missionComplete << 2);
+  byte sendData = (blinkRole << 4) + (isMining << 3) + (oreTarget);
   setValueSentOnAllFaces(sendData);
 }
 
 void newMission() {
   missionComplete = false;
-  oreTarget = rand(3);
+  oreTarget = rand(3) + 1;
   oreCollected = 0;
 }
 
@@ -161,92 +168,54 @@ void depotLoop() {
     blinkRole = SHIP;
     newAsteroid();
   }
+
   //set up communication
   byte sendData = (blinkRole << 4);
   setValueSentOnAllFaces(sendData);
 }
 
 void shipDisplay() {
-  //display the drill
-  if (isMining) {
-    if (animTimer.isExpired()) {
-      setColor(dim(WHITE, 25));
-      //setColorOnFace(dim(WHITE, 25), faceAdjust(animFrame));
-      animFrame++;
-      if (animFrame == 3) {
-        animFrame = 0;
-      }
-      setColorOnFace(WHITE, faceAdjust(animFrame));
-      animTimer.set(75);
+  //just display ore collected
+  FOREACH_FACE(f) {
+    if (oreCollected > f) {
+      setColorOnFace(oreColors[oreTarget], f);
+    } else {
+      setColorOnFace(dim(oreColors[oreTarget], 25), f);
     }
-  } else {
-    setColorOnFace(dim(WHITE, 25), faceAdjust(0));//drill left
-    setColorOnFace(dim(WHITE, 25), faceAdjust(1));//drill center
-    setColorOnFace(dim(WHITE, 25), faceAdjust(2));//drill right
   }
 
-  //display the ore
-  setColorOnFace(dim(oreColors[oreTarget], dimnessAdjust(1, oreCollected)), faceAdjust(3));
-  setColorOnFace(dim(oreColors[oreTarget], dimnessAdjust(2, oreCollected)), faceAdjust(4));
-  setColorOnFace(dim(oreColors[oreTarget], dimnessAdjust(3, oreCollected)), faceAdjust(5));
+  if (!canMine.isExpired()) { //currently mining
+    setColorOnFace(WHITE, oreCollected);
+  }
 
   if (missionComplete) {
-    setColor(YELLOW);
+    setColor(WHITE);
   }
-}
-
-byte faceAdjust(byte face) {
-  return (((face + 6) + miningFace - 1) % 6);
 }
 
 void asteroidDisplay() {
-  //run through each face, if it has ore, figure out how much is left there
-  byte oreNum = 0;
   FOREACH_FACE(f) {
-    if (oreLocations[f] == true) {
-      oreNum++;
-      setColorOnFace(dim(oreColors[oreType], dimnessAdjust(oreNum, oreCountdown) - 25), f);
-    } else {
-      setColorOnFace(OFF, f);
+    Color displayColor = oreColors[oreLayout[f]];
+    setColorOnFace(displayColor, f);
+    if (isMinable[f]) {
+      setColorOnFace(WHITE, f);
     }
   }
-  if (oreCollected <= 0) {
-    setColor(OFF);
-  }
 }
 
-byte dimnessAdjust(byte level, int total) {
-  byte dimness;
-  float multiplier = oreInterval / 230;
-  byte fullLights = total / oreInterval;
-  byte overflow = total % oreInterval;
-  if (fullLights >= level) {//this level is already full
-    dimness = 255;
-  } else if (fullLights = level - 1) {
-    dimness = (overflow * multiplier) + 25;
-  } else {
-    dimness = 25;
-  }
-  return dimness;
-}
-
-byte getNeighborRole(byte data) {
+byte getBlinkRole(byte data) {
   return (data >> 4);//the first two bits
 }
 
-byte getAsteroidOreType (byte data) {
-  return ((data >> 2) & 3);
-}
-
-byte getAsteroidMinable (byte data) {
-  return ((data >> 1) & 1);
+byte getShipTarget(byte data) {
+  return (data & 7);//the last three bits
 }
 
 byte getShipMining(byte data) {
-  return ((data >> 3) & 1);
+  return ((data >> 3) & 1);//just the third bit
 }
 
-byte getShipMissionComplete(byte data) {
-  return ((data >> 2) & 1);
+byte getAsteroidMinable(byte data) {
+  return ((data >> 3) & 1);//just the third bit
 }
 
