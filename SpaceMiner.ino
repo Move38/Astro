@@ -14,7 +14,7 @@ bool isMinable[6];
 
 ////SHIP VARIABLES
 byte miningFace = 0;
-byte missionCount = 3;
+byte missionCount = 6;
 bool missionComplete;
 bool isMining;
 byte oreTarget;
@@ -48,7 +48,6 @@ void loop() {
 void asteroidLoop() {
   if (buttonLongPressed()) {
     blinkRole = DEPOT;
-    newMission();
   }
 
   //ok, so I'm hanging out, and a blink touches me. is it a ship asking for a thing I have?
@@ -136,6 +135,7 @@ void shipLoop() {
           if (getAsteroidMinable(neighborData) == 1) {
             //we found one we can mine!
             isMining = true;
+            miningFace = f;
             oreCollected++;
             canMine.set(miningTime);
           }
@@ -149,6 +149,9 @@ void shipLoop() {
   }
 
   if (buttonDoubleClicked()) {
+    if (missionComplete) {
+      missionCount--;
+    }
     newMission();
   }
 
@@ -166,7 +169,8 @@ void newMission() {
 void depotLoop() {
   if (buttonLongPressed()) {
     blinkRole = SHIP;
-    newAsteroid();
+    missionCount = 6;
+    newMission();
   }
 
   //set up communication
@@ -177,19 +181,23 @@ void depotLoop() {
 void shipDisplay() {
   //just display ore collected
   FOREACH_FACE(f) {
-    if (oreCollected > f) {
-      setColorOnFace(oreColors[oreTarget], f);
+    if (missionCount > f) {
+      if (oreCollected > f) {
+        setColorOnFace(oreColors[oreTarget], f);
+      } else {
+        setColorOnFace(dim(oreColors[oreTarget], 25), f);
+      }
+
+      if (missionComplete) {
+        setColorOnFace(WHITE, f);
+      }
     } else {
-      setColorOnFace(dim(oreColors[oreTarget], 25), f);
+      setColorOnFace(OFF, f);
     }
   }
 
   if (!canMine.isExpired()) { //currently mining
-    setColorOnFace(WHITE, oreCollected);
-  }
-
-  if (missionComplete) {
-    setColor(WHITE);
+    setColorOnFace(WHITE, miningFace);
   }
 }
 
