@@ -1,4 +1,4 @@
-enum blinkRoles {ASTEROID, SHIP, DEPOT};
+enum blinkRoles {ASTEROID, SHIP};
 byte blinkRole = ASTEROID;
 long millisHold = 0;
 
@@ -16,6 +16,7 @@ bool isMinable[6];
 byte miningFace = 0;
 byte missionCount = 6;
 bool missionComplete;
+bool gameComplete;
 bool isMining;
 byte oreTarget;
 byte oreCollected;
@@ -38,16 +39,15 @@ void loop() {
       shipLoop();
       shipDisplay();
       break;
-    case DEPOT:
-      depotLoop();
-      setColor(dim(WHITE, 25));
-      break;
   }
 }
 
 void asteroidLoop() {
   if (buttonLongPressed()) {
-    blinkRole = DEPOT;
+    blinkRole = SHIP;
+    missionCount = 6;
+    newMission();
+    gameComplete = false;
   }
 
   //ok, so I'm hanging out, and a blink touches me. is it a ship asking for a thing I have?
@@ -146,13 +146,18 @@ void shipLoop() {
 
   if (oreCollected >= missionCount) {
     missionComplete = true;
+    if (missionCount == 1) {
+      gameComplete = true;
+    }
   }
 
   if (buttonDoubleClicked()) {
-    if (missionComplete) {
-      missionCount--;
+    if (!gameComplete) { //only works if the game is not complete
+      if (missionComplete) {
+        missionCount--;
+      }
+      newMission();
     }
-    newMission();
   }
 
   //set up communication
@@ -166,38 +171,33 @@ void newMission() {
   oreCollected = 0;
 }
 
-void depotLoop() {
-  if (buttonLongPressed()) {
-    blinkRole = SHIP;
-    missionCount = 6;
-    newMission();
-  }
-
-  //set up communication
-  byte sendData = (blinkRole << 4);
-  setValueSentOnAllFaces(sendData);
-}
-
 void shipDisplay() {
-  //just display ore collected
-  FOREACH_FACE(f) {
-    if (missionCount > f) {
-      if (oreCollected > f) {
-        setColorOnFace(oreColors[oreTarget], f);
-      } else {
-        setColorOnFace(dim(oreColors[oreTarget], 25), f);
+  if (gameComplete) { //big fancy celebration!
+    if (resetTimer.isExpired()) {
+      //randomly color all faces
+      FOREACH_FACE(f) {
+        setColorOnFace(oreColors[rand(3) + 1], f);
       }
-
-      if (missionComplete) {
-        setColorOnFace(WHITE, f);
-      }
-    } else {
-      setColorOnFace(OFF, f);
+      resetTimer.set(75);
     }
-  }
-
-  if (!canMine.isExpired()) { //currently mining
-    setColorOnFace(WHITE, miningFace);
+  } else if (missionComplete) { //small celebration
+    setColor(WHITE);
+  } else {//just display ore
+    FOREACH_FACE(f) {
+      if (missionCount > f) {
+        if (oreCollected > f) {
+          setColorOnFace(oreColors[oreTarget], f);
+        } else {
+          setColorOnFace(dim(oreColors[oreTarget], 25), f);
+        }
+      } else {
+        setColorOnFace(OFF, f);
+      }
+    }
+    //mining state
+    if (!canMine.isExpired()) { //currently mining
+      setColorOnFace(WHITE, oreCollected - 1);
+    }
   }
 }
 
@@ -205,9 +205,6 @@ void asteroidDisplay() {
   FOREACH_FACE(f) {
     Color displayColor = oreColors[oreLayout[f]];
     setColorOnFace(displayColor, f);
-    if (isMinable[f]) {
-      setColorOnFace(WHITE, f);
-    }
   }
 }
 
