@@ -7,6 +7,7 @@ byte animFrame = 0;
 
 ////ASTEROID VARIABLES
 byte oreLayout[6];
+byte oreBrightness[6] = {0, 0, 0, 0, 0, 0};
 Color oreColors [5] = {OFF, ORANGE, GREEN, CYAN, YELLOW};
 Timer resetTimer;
 int resetInterval = 3000;
@@ -291,9 +292,26 @@ void shipDisplay() {
 }
 
 void asteroidDisplay() {
+  //run through each face and check on the brightness
+  FOREACH_FACE(f) {
+    if (oreLayout[f] > 0) { //should be ore here
+      if (oreBrightness[f] < 255) { //hey, this isn't full brightness yet
+        oreBrightness[f] += 5;
+      }
+    } else {//should not be ore here
+      if (oreBrightness[f] > 0) { //hey, this isn't off
+        oreBrightness[f] -= 5;
+      }
+    }
+  }
+
   FOREACH_FACE(f) {
     Color displayColor = oreColors[oreLayout[f]];
-    setColorOnFace(displayColor, f);
+    byte displayBrightness = oreBrightness[f];
+    if (displayColor == OFF && displayBrightness > 0) { //a fading ore thing
+      displayColor = WHITE;
+    }
+    setColorOnFace(dim(displayColor, displayBrightness), f);
   }
 }
 
