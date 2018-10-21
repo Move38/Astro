@@ -9,7 +9,7 @@ byte animFrame = 0;
 byte oreLayout[6];
 Color oreColors [5] = {OFF, ORANGE, GREEN, CYAN, YELLOW};
 Timer resetTimer;
-int resetInterval = 4000;
+int resetInterval = 3000;
 bool isMinable[6];
 
 ////SHIP VARIABLES
@@ -55,7 +55,7 @@ void asteroidLoop() {
     if (!isValueReceivedOnFaceExpired(f)) { //neighbor!
       byte neighborData = getLastValueReceivedOnFace(f);
       if (getBlinkRole(neighborData) == SHIP) { //a ship!
-        resetTimer.set(resetInterval);
+        resetTimer.set(rand(2000) + resetInterval);
         byte oreRequest = getShipTarget(neighborData);//what does it want?
         FOREACH_FACE(ff) {//do I have one?
           if (oreLayout[ff] == oreRequest) {//yes
@@ -87,7 +87,7 @@ void asteroidLoop() {
   //let's check to see if we should renew ourselves!
   if (resetTimer.isExpired()) {
     newAsteroid();
-    resetTimer.set(resetInterval);
+    resetTimer.set(rand(2000) + resetInterval);
   }
   //set up communication
   FOREACH_FACE(f) {
@@ -116,6 +116,12 @@ void newAsteroid() {
     oreLayout[swapA] = oreLayout[swapB];
     oreLayout[swapB] = temp;
   }
+}
+
+void updateAsteroid(){
+  //so we evaluate oreCount
+  //then we decide what to do
+  //I guess 
 }
 
 void shipLoop() {
