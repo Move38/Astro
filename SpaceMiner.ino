@@ -86,7 +86,7 @@ void asteroidLoop() {
 
   //let's check to see if we should renew ourselves!
   if (resetTimer.isExpired()) {
-    newAsteroid();
+    updateAsteroid();
     resetTimer.set(rand(2000) + resetInterval);
   }
   //set up communication
@@ -118,10 +118,93 @@ void newAsteroid() {
   }
 }
 
-void updateAsteroid(){
-  //so we evaluate oreCount
-  //then we decide what to do
-  //I guess 
+void updateAsteroid() {
+  byte oreCount = 0;
+  FOREACH_FACE(f) {
+    if (oreLayout[f] > 0) {
+      oreCount++;
+    }
+  }
+
+  if (oreCount < 4) {
+    oreLayout[findEmptySpot()] = findNewColor();
+  } else {
+    oreLayout[findFullSpot()] = 0;
+  }
+}
+
+byte findNewColor() {
+  byte newColor;
+
+  bool usedColors[5] = {false, false, false, false, false};
+  //run through each face and mark that color as used in the array
+  FOREACH_FACE(f) {
+    usedColors[oreLayout[f]] = true;
+  }
+
+  //now do the shuffle search doodad
+  byte searchOrder[5] = {0, 1, 2, 3, 4};
+  //shuffle array
+  for (byte i = 0; i < 10; i++) {
+    byte swapA = rand(4);
+    byte swapB = rand(4);
+    byte temp = searchOrder[swapA];
+    searchOrder[swapA] = searchOrder[swapB];
+    searchOrder[swapB] = temp;
+  }
+
+  for (byte i = 0; i < 5; i++) {
+    if (usedColors[searchOrder[i]] == false) { //this color is not used
+      newColor = searchOrder[i];
+    }
+  }
+
+  return newColor;
+  //return 1;
+}
+
+byte findEmptySpot() {
+  byte emptyFace;
+  byte searchOrder[6] = {0, 1, 2, 3, 4, 5};
+  //shuffle array
+  for (byte i = 0; i < 10; i++) {
+    byte swapA = rand(5);
+    byte swapB = rand(5);
+    byte temp = searchOrder[swapA];
+    searchOrder[swapA] = searchOrder[swapB];
+    searchOrder[swapB] = temp;
+  }
+
+  //now do the search in this order. The last 0 you find is the empty spot we are going to return
+  FOREACH_FACE(f) {
+    if (oreLayout[searchOrder[f]] == 0) {
+      emptyFace = searchOrder[f];
+    }
+  }
+
+  return emptyFace;
+}
+
+byte findFullSpot() {
+  byte fullFace;
+  byte searchOrder[6] = {0, 1, 2, 3, 4, 5};
+  //shuffle array
+  for (byte i = 0; i < 10; i++) {
+    byte swapA = rand(5);
+    byte swapB = rand(5);
+    byte temp = searchOrder[swapA];
+    searchOrder[swapA] = searchOrder[swapB];
+    searchOrder[swapB] = temp;
+  }
+
+  //now do the search in this order. The last 0 you find is the empty spot we are going to return
+  FOREACH_FACE(f) {
+    if (oreLayout[searchOrder[f]] > 0) {
+      fullFace = searchOrder[f];
+    }
+  }
+
+  return fullFace;
 }
 
 void shipLoop() {
