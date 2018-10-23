@@ -14,9 +14,11 @@ All Blinks begin as Asteroids. Each player should grab one Blink and take it asi
 
 Based on your player count, we suggest the following asteroid counts. That being said, you can adjust these numbers to fit your play style and Blinks collection:
 
-2 Players - 4 Asteroids
-3-4 Players - 5 Asteroids
-5-6 Players - 6 Asteroids
+| # of Players | # of Asteroids |
+|--------------|:--------------:|
+| 2   | 4 |
+| 3-4 | 5 |
+| 5-6 | 6 |
 
 Each player should now long-press their Blink until it turns into a Ship. It should look something like this.
 
