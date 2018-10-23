@@ -1,4 +1,5 @@
 # SpaceMiner
+###### based on a game by Colby & Diamond
 
 | Number of Blinks | Number of Players | Duration of Gameplay | Recommended Ages |
 |------------------|:-----------------:|:--------------------:|-----------------:|
