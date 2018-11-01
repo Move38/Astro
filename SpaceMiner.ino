@@ -18,7 +18,7 @@ byte miningFace = 0;
 byte missionCount = 6;
 bool missionComplete;
 bool gameComplete;
-bool isMining;
+bool isMining[6] = {false, false, false, false, false, false};
 byte oreTarget;
 byte oreCollected;
 Timer canMine;
@@ -51,44 +51,32 @@ void asteroidLoop() {
     gameComplete = false;
   }
 
-  //ok, so I'm hanging out, and a blink touches me. is it a ship asking for a thing I have?
+  //ok, so let's look for ships that need ore
   FOREACH_FACE(f) {
-    if (!isValueReceivedOnFaceExpired(f)) { //neighbor!
+    if (!isValueReceivedOnFaceExpired(f)) {//neighbor!
       byte neighborData = getLastValueReceivedOnFace(f);
-      if (getBlinkRole(neighborData) == SHIP) { //a ship!
-        resetTimer.set(rand(2000) + resetInterval);
-        byte oreRequest = getShipTarget(neighborData);//what does it want?
-        FOREACH_FACE(ff) {//do I have one?
-          if (oreLayout[ff] == oreRequest) {//yes
-            setColorOnFace(WHITE, ff);
-            isMinable[f] = true;//that face says "hey, I have one of those. take it"
-          }
-        }
-
-        //now, if we are minable, check if that ship is currently mining
-        if (isMinable[f]) {
-          if (getShipMining(neighborData) == 1) { //oh that ship is mining. Our work is done!
+      if (getBlinkRole(neighborData) == SHIP) { //this neighbor is a ship
+        //so here we check to see what our relationship to them is
+        if (isMinable[f]) {//this is a face we have offered ore to
+          if (getShipMining(neighborData) == 1) {//this ship is mining! we can stop offering!
             isMinable[f] = false;
-            FOREACH_FACE(fff) {
-              if (oreLayout[fff] == oreRequest) {
-                oreLayout[fff] = 0;//remove that ore
-              }
-            }
+          }
+        } else {//this is a face we COULD offer ore to
+          if (oreCheck(getShipTarget(neighborData))) {//this is asking for something we have
+            removeOre(getShipTarget(neighborData));
+            isMinable[f] = true;
           }
         }
-      } else {
-        isMinable[f] = false;
-      }//end of found ship check
-    } else {
+      }
+    } else {//no neighbor
       isMinable[f] = false;
-    }//end of found neighbor check
-  }//end of face check
-
+    }
+  }
 
   //let's check to see if we should renew ourselves!
-  if (resetTimer.isExpired()) {
+  if (resetTimer.isExpired() && isAlone()) {
     updateAsteroid();
-    resetTimer.set(rand(2000) + resetInterval);
+    resetTimer.set(rand(1000) + resetInterval);
   }
   //set up communication
   FOREACH_FACE(f) {
@@ -98,24 +86,27 @@ void asteroidLoop() {
 }
 
 void newAsteroid() {
-  //default layout
-  oreLayout[0] = 1;
-  oreLayout[1] = 2;
-  oreLayout[2] = 3;
-  oreLayout[3] = 4;
-  oreLayout[4] = 0;
-  oreLayout[5] = 0;
+  //clear layout
+  FOREACH_FACE(f) {
+    oreLayout[f] = 0;
+  }
+}
 
-  //remove one or two of them
-  oreLayout[rand(4)] = 0;
+bool oreCheck(byte type) {
+  bool isAvailable = false;
+  FOREACH_FACE(f) {
+    if (oreLayout[f] == type) {
+      isAvailable = true;
+    }
+  }
+  return (isAvailable);
+}
 
-  //shuffle array
-  for (byte i = 0; i < 10; i++) {
-    byte swapA = rand(5);
-    byte swapB = rand(5);
-    byte temp = oreLayout[swapA];
-    oreLayout[swapA] = oreLayout[swapB];
-    oreLayout[swapB] = temp;
+void removeOre(byte type) {
+  FOREACH_FACE(f) {
+    if (oreLayout[f] == type) {
+      oreLayout[f] = 0;
+    }
   }
 }
 
@@ -127,10 +118,13 @@ void updateAsteroid() {
     }
   }
 
-  if (oreCount < 4) {
+  if (oreCount == 0) { //add two
     oreLayout[findEmptySpot()] = findNewColor();
-  } else {
+    oreLayout[findEmptySpot()] = findNewColor();
+  } else if (oreCount == 4) { //remove one
     oreLayout[findFullSpot()] = 0;
+  } else {//add one
+    oreLayout[findEmptySpot()] = findNewColor();
   }
 }
 
@@ -214,45 +208,62 @@ void shipLoop() {
     newAsteroid();
   }
 
-  //ok, so are we allowed to look around for mining purposes?
-  if (canMine.isExpired()) {
-    isMining = false;
-    //look at neighbors for an asteroid that is minable
+  //let's look for asteroids that want to trade
+  //only do it if we are allowed to
+  if (!missionComplete) {
     FOREACH_FACE(f) {
-      if (!isValueReceivedOnFaceExpired(f)) { //neighbor!
+      if (!isValueReceivedOnFaceExpired(f)) {//a neighbor!
         byte neighborData = getLastValueReceivedOnFace(f);
         if (getBlinkRole(neighborData) == ASTEROID) {//an asteroid!
-          if (getAsteroidMinable(neighborData) == 1) {
-            //we found one we can mine!
-            isMining = true;
-            miningFace = f;
-            oreCollected++;
-            canMine.set(miningTime);
+          //so, what is my relationship to this asteroid?
+          if (isMining[f]) { //I'm already mining here
+            if (getAsteroidMinable(neighborData) == 0) {//he's done, so I'm done
+              isMining[f] = false;
+            }
+          } else {//I could be mining here if they'd let me
+            if (getAsteroidMinable(neighborData) == 1) {//ore is available, take it
+              oreCollected++;
+              isMining[f] = true;
+            }
           }
         }
+      } else {//no neighbor
+        isMining[f] = false;
+      }
+    }
+
+    //finally, check to see if the mission is complete
+    if (oreCollected == missionCount) {
+      missionComplete = true;
+      oreTarget = 7;//an ore that doesn't exist
+      //oh, also, is gameComplete?
+      if (missionCount == 1) {
+        gameComplete = true;
       }
     }
   }
 
-  if (oreCollected >= missionCount) {
-    missionComplete = true;
-    if (missionCount == 1) {
-      gameComplete = true;
-    }
-  }
-
+  //new mission time?
   if (buttonDoubleClicked()) {
-    if (!gameComplete) { //only works if the game is not complete
+    if (!gameComplete) { //only do this if the game isn't over
       if (missionComplete) {
         missionCount--;
+        newMission();
+      } else {
+        newMission();
       }
-      newMission();
     }
+
   }
 
+
+
   //set up communication
-  byte sendData = (blinkRole << 4) + (isMining << 3) + (oreTarget);
-  setValueSentOnAllFaces(sendData);
+  FOREACH_FACE(f) {
+    byte sendData = (blinkRole << 4) + (isMining[f] << 3) + (oreTarget);
+    setValueSentOnFace(sendData, f);
+  }
+
 }
 
 void newMission() {
@@ -284,10 +295,6 @@ void shipDisplay() {
         setColorOnFace(OFF, f);
       }
     }
-    //mining state
-    if (!canMine.isExpired()) { //currently mining
-      setColorOnFace(WHITE, oreCollected - 1);
-    }
   }
 }
 
@@ -308,7 +315,7 @@ void asteroidDisplay() {
   FOREACH_FACE(f) {
     Color displayColor = oreColors[oreLayout[f]];
     byte displayBrightness = oreBrightness[f];
-    if (displayColor == OFF && displayBrightness > 0) { //a fading ore thing
+    if (oreLayout[f] == 0 && displayBrightness > 0) { //a fading ore thing
       displayColor = WHITE;
     }
     setColorOnFace(dim(displayColor, displayBrightness), f);
