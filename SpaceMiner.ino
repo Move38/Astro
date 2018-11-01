@@ -14,15 +14,15 @@ int resetInterval = 3000;
 bool isMinable[6];
 
 ////SHIP VARIABLES
-byte miningFace = 0;
 byte missionCount = 6;
 bool missionComplete;
 bool gameComplete;
 bool isMining[6] = {false, false, false, false, false, false};
 byte oreTarget;
 byte oreCollected;
-Timer canMine;
 int miningTime = 500;
+byte displayMissionCompleteColor;
+byte displayMissionCompleteIndex = 0;
 
 void setup() {
   // put your setup code here, to run once:
@@ -235,6 +235,9 @@ void shipLoop() {
     //finally, check to see if the mission is complete
     if (oreCollected == missionCount) {
       missionComplete = true;
+      displayMissionCompleteColor = oreTarget;
+      displayMissionCompleteIndex = 0;
+      resetTimer.set(0);
       oreTarget = 7;//an ore that doesn't exist
       //oh, also, is gameComplete?
       if (missionCount == 1) {
@@ -281,15 +284,54 @@ void shipDisplay() {
       }
       resetTimer.set(75);
     }
-  } else if (missionComplete) { //small celebration
-    setColor(WHITE);
-  } else {//just display ore
+  }
+  else if (missionComplete) { //small celebration
+
+    // Wipe animation
+    // TODO: Make this rotate one space at a time, it currently rotates 2 spaces and we have no idea why. Do you know why?
+    if (resetTimer.isExpired()) { // add a new face for the next color
+
+      // every 80 ms
+      resetTimer.set(80);
+
+      // increment index (0-11)
+      displayMissionCompleteIndex = (displayMissionCompleteIndex + 1) % ( 6 * 7 );
+
+
+      if (((displayMissionCompleteIndex/7) % 2) == 0) {
+        setColorOnFace(oreColors[displayMissionCompleteColor], displayMissionCompleteIndex % 6);
+      }
+      else {
+        setColorOnFace(WHITE, displayMissionCompleteIndex % 6);
+      }
+    }
+
+  }
+  else {//just display ore
     FOREACH_FACE(f) {
       if (missionCount > f) {
         if (oreCollected > f) {
+          // show the ore brightly acquired
           setColorOnFace(oreColors[oreTarget], f);
         } else {
-          setColorOnFace(dim(oreColors[oreTarget], 25), f);
+          // show the ore is needed here
+          if (!resetTimer.isExpired()) {
+            if (resetTimer.getRemaining() > 900 ) {
+              setColorOnFace(oreColors[oreTarget], f);
+            }
+            else if( resetTimer.getRemaining() <= 900 && resetTimer.getRemaining() > 800 ) {
+              setColorOnFace(dim(oreColors[oreTarget], 128), f);
+            }
+            else if( resetTimer.getRemaining() <= 800 && resetTimer.getRemaining() > 700 ) {
+              setColorOnFace(oreColors[oreTarget], f);
+            }
+            else if( resetTimer.getRemaining() <= 700 && resetTimer.getRemaining() > 0 ) {
+              setColorOnFace(dim(oreColors[oreTarget], 128), f);
+            }
+          }
+          else {
+            resetTimer.set(1000);
+          }
         }
       } else {
         setColorOnFace(OFF, f);
