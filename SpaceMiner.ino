@@ -8,7 +8,7 @@ byte animFrame = 0;
 ////ASTEROID VARIABLES
 byte oreLayout[6];
 byte oreBrightness[6] = {0, 0, 0, 0, 0, 0};
-Color oreColors [5] = {OFF, ORANGE, GREEN, CYAN, YELLOW};
+Color oreColors [6] = {OFF, ORANGE, CYAN, YELLOW, GREEN};  // ORE COLORS ARE ORANGE, GREEN, CYAN, and YELLOW
 Timer resetTimer;
 int resetInterval = 3000;
 bool isMinable[6];
@@ -259,8 +259,6 @@ void shipLoop() {
 
   }
 
-
-
   //set up communication
   FOREACH_FACE(f) {
     byte sendData = (blinkRole << 4) + (isMining[f] << 3) + (oreTarget);
@@ -277,13 +275,20 @@ void newMission() {
 
 void shipDisplay() {
   if (gameComplete) { //big fancy celebration!
-    if (resetTimer.isExpired()) {
-      //randomly color all faces
-      FOREACH_FACE(f) {
-        setColorOnFace(oreColors[rand(3) + 1], f);
-      }
-      resetTimer.set(75);
+    // Wipe animation
+    // TODO: Make this rotate one space at a time, it currently rotates 2 spaces and we have no idea why. Do you know why?
+    if (resetTimer.isExpired()) { // add a new face for the next color
+
+      // every 80 ms
+      resetTimer.set(50);
+
+      // increment index (0-11)
+      displayMissionCompleteIndex = (displayMissionCompleteIndex + 1) % ( 6 * 7 * 4);
+
+      byte index = ((displayMissionCompleteIndex / 7) % 4) + 1;
+      setColorOnFace(oreColors[index], displayMissionCompleteIndex % 6);
     }
+
   }
   else if (missionComplete) { //small celebration
 
@@ -292,18 +297,19 @@ void shipDisplay() {
     if (resetTimer.isExpired()) { // add a new face for the next color
 
       // every 80 ms
-      resetTimer.set(80);
+      resetTimer.set(50);
 
       // increment index (0-11)
       displayMissionCompleteIndex = (displayMissionCompleteIndex + 1) % ( 6 * 7 );
 
 
-      if (((displayMissionCompleteIndex/7) % 2) == 0) {
+      if (((displayMissionCompleteIndex / 7) % 2) == 0) {
         setColorOnFace(oreColors[displayMissionCompleteColor], displayMissionCompleteIndex % 6);
       }
       else {
         setColorOnFace(WHITE, displayMissionCompleteIndex % 6);
       }
+
     }
 
   }
@@ -319,13 +325,13 @@ void shipDisplay() {
             if (resetTimer.getRemaining() > 900 ) {
               setColorOnFace(oreColors[oreTarget], f);
             }
-            else if( resetTimer.getRemaining() <= 900 && resetTimer.getRemaining() > 800 ) {
+            else if ( resetTimer.getRemaining() <= 900 && resetTimer.getRemaining() > 800 ) {
               setColorOnFace(dim(oreColors[oreTarget], 128), f);
             }
-            else if( resetTimer.getRemaining() <= 800 && resetTimer.getRemaining() > 700 ) {
+            else if ( resetTimer.getRemaining() <= 800 && resetTimer.getRemaining() > 700 ) {
               setColorOnFace(oreColors[oreTarget], f);
             }
-            else if( resetTimer.getRemaining() <= 700 && resetTimer.getRemaining() > 0 ) {
+            else if ( resetTimer.getRemaining() <= 700 && resetTimer.getRemaining() > 0 ) {
               setColorOnFace(dim(oreColors[oreTarget], 128), f);
             }
           }
