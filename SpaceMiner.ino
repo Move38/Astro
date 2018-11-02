@@ -5,13 +5,17 @@ long millisHold = 0;
 Timer animTimer;
 byte animFrame = 0;
 
+#define DIED_MINED   0
+#define DIED_NATURAL 5
+
 ////ASTEROID VARIABLES
 byte oreLayout[6];
 byte oreBrightness[6] = {0, 0, 0, 0, 0, 0};
-Color oreColors [6] = {OFF, ORANGE, CYAN, YELLOW, GREEN};  // ORE COLORS ARE ORANGE, GREEN, CYAN, and YELLOW
+Color oreColors [5] = {OFF, ORANGE, CYAN, YELLOW, GREEN};  // ORE COLORS ARE ORANGE, GREEN, CYAN, and YELLOW
 Timer resetTimer;
 int resetInterval = 3000;
 bool isMinable[6];
+byte fadeColorIndex;
 
 ////SHIP VARIABLES
 byte missionCount = 6;
@@ -105,7 +109,7 @@ bool oreCheck(byte type) {
 void removeOre(byte type) {
   FOREACH_FACE(f) {
     if (oreLayout[f] == type) {
-      oreLayout[f] = 0;
+      oreLayout[f] = DIED_MINED;
     }
   }
 }
@@ -113,7 +117,7 @@ void removeOre(byte type) {
 void updateAsteroid() {
   byte oreCount = 0;
   FOREACH_FACE(f) {
-    if (oreLayout[f] > 0) {
+    if (isOrePresentAtIndex(f)) {
       oreCount++;
     }
   }
@@ -122,7 +126,9 @@ void updateAsteroid() {
     oreLayout[findEmptySpot()] = findNewColor();
     oreLayout[findEmptySpot()] = findNewColor();
   } else if (oreCount == 4) { //remove one
-    oreLayout[findFullSpot()] = 0;
+    byte oreToRemove = findFullSpot();
+    fadeColorIndex = oreLayout[oreToRemove];
+    oreLayout[oreToRemove] = DIED_NATURAL;
   } else {//add one
     oreLayout[findEmptySpot()] = findNewColor();
   }
@@ -172,7 +178,7 @@ byte findEmptySpot() {
 
   //now do the search in this order. The last 0 you find is the empty spot we are going to return
   FOREACH_FACE(f) {
-    if (oreLayout[searchOrder[f]] == 0) {
+    if ( !isOrePresentAtIndex(searchOrder[f]) ) {
       emptyFace = searchOrder[f];
     }
   }
@@ -194,7 +200,7 @@ byte findFullSpot() {
 
   //now do the search in this order. The last 0 you find is the empty spot we are going to return
   FOREACH_FACE(f) {
-    if (oreLayout[searchOrder[f]] > 0) {
+    if ( isOrePresentAtIndex(searchOrder[f]) ) {
       fullFace = searchOrder[f];
     }
   }
@@ -265,6 +271,10 @@ void shipLoop() {
     setValueSentOnFace(sendData, f);
   }
 
+}
+
+bool isOrePresentAtIndex( byte i ) {
+  return  (oreLayout[i] != DIED_NATURAL && oreLayout[i] != DIED_MINED);
 }
 
 void newMission() {
@@ -349,7 +359,7 @@ void shipDisplay() {
 void asteroidDisplay() {
   //run through each face and check on the brightness
   FOREACH_FACE(f) {
-    if (oreLayout[f] > 0) { //should be ore here
+    if (isOrePresentAtIndex(f)) { //should be ore here
       if (oreBrightness[f] < 255) { //hey, this isn't full brightness yet
         oreBrightness[f] += 5;
       }
@@ -363,8 +373,14 @@ void asteroidDisplay() {
   FOREACH_FACE(f) {
     Color displayColor = oreColors[oreLayout[f]];
     byte displayBrightness = oreBrightness[f];
-    if (oreLayout[f] == 0 && displayBrightness > 0) { //a fading ore thing
-      displayColor = WHITE;
+    if (displayBrightness > 0) { //a fading ore thing
+      // did I die of natural causes
+      if (oreLayout[f] == DIED_NATURAL) {
+        displayColor = oreColors[fadeColorIndex];
+      }
+      else if (oreLayout[f] == DIED_MINED) {
+        displayColor = WHITE;
+      }
     }
     setColorOnFace(dim(displayColor, displayBrightness), f);
   }
