@@ -1,6 +1,7 @@
+#define RESET_INTERVAL 3000
+
 enum blinkRoles {ASTEROID, SHIP};
 byte blinkRole = ASTEROID;
-long millisHold = 0;
 
 Timer animTimer;
 byte animFrame = 0;
@@ -13,15 +14,14 @@ byte oreLayout[6];
 byte oreBrightness[6] = {0, 0, 0, 0, 0, 0};
 Color oreColors [5] = {OFF, ORANGE, CYAN, YELLOW, GREEN};  // ORE COLORS ARE ORANGE, GREEN, CYAN, and YELLOW
 Timer resetTimer;
-int resetInterval = 3000;
-bool isMinable[6];
+byte isMinable[6];
 byte fadeColorIndex;
 
 ////SHIP VARIABLES
 byte missionCount = 6;
-bool missionComplete;
-bool gameComplete;
-bool isMining[6] = {false, false, false, false, false, false};
+byte missionComplete;
+byte gameComplete;
+byte isMining[6] = {false, false, false, false, false, false};
 byte oreTarget;
 byte oreCollected;
 int miningTime = 500;
@@ -80,7 +80,7 @@ void asteroidLoop() {
   //let's check to see if we should renew ourselves!
   if (resetTimer.isExpired() && isAlone()) {
     updateAsteroid();
-    resetTimer.set(rand(1000) + resetInterval);
+    resetTimer.set(random(1000) + RESET_INTERVAL);
   }
   //set up communication
   FOREACH_FACE(f) {
@@ -147,8 +147,8 @@ byte findNewColor() {
   byte searchOrder[5] = {0, 1, 2, 3, 4};
   //shuffle array
   for (byte i = 0; i < 10; i++) {
-    byte swapA = rand(4);
-    byte swapB = rand(4);
+    byte swapA = random(4);
+    byte swapB = random(4);
     byte temp = searchOrder[swapA];
     searchOrder[swapA] = searchOrder[swapB];
     searchOrder[swapB] = temp;
@@ -169,8 +169,8 @@ byte findEmptySpot() {
   byte searchOrder[6] = {0, 1, 2, 3, 4, 5};
   //shuffle array
   for (byte i = 0; i < 10; i++) {
-    byte swapA = rand(5);
-    byte swapB = rand(5);
+    byte swapA = random(5);
+    byte swapB = random(5);
     byte temp = searchOrder[swapA];
     searchOrder[swapA] = searchOrder[swapB];
     searchOrder[swapB] = temp;
@@ -191,8 +191,8 @@ byte findFullSpot() {
   byte searchOrder[6] = {0, 1, 2, 3, 4, 5};
   //shuffle array
   for (byte i = 0; i < 10; i++) {
-    byte swapA = rand(5);
-    byte swapB = rand(5);
+    byte swapA = random(5);
+    byte swapB = random(5);
     byte temp = searchOrder[swapA];
     searchOrder[swapA] = searchOrder[swapB];
     searchOrder[swapB] = temp;
@@ -279,7 +279,7 @@ bool isOrePresentAtIndex( byte i ) {
 
 void newMission() {
   missionComplete = false;
-  oreTarget = rand(3) + 1;
+  oreTarget = random(3) + 1;
   oreCollected = 0;
 }
 
@@ -401,4 +401,3 @@ byte getShipMining(byte data) {
 byte getAsteroidMinable(byte data) {
   return ((data >> 3) & 1);//just the third bit
 }
-
