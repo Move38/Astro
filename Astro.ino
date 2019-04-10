@@ -1,6 +1,7 @@
 /*  
  *   Astro
- *   by Move38
+ *   by Move38, Inc. 2019
+ *   Lead development by Dan King
  *   original game by Diamond and Colby
  * 
  */
