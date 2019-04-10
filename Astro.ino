@@ -1,3 +1,10 @@
+/*  
+ *   Astro
+ *   by Move38
+ *   original game by Diamond and Colby
+ * 
+ */
+
 #define RESET_INTERVAL 3000
 
 enum blinkRoles {ASTEROID, SHIP};
@@ -6,8 +13,9 @@ byte blinkRole = ASTEROID;
 Timer animTimer;
 byte animFrame = 0;
 
-#define DIED_MINED   0
-#define DIED_NATURAL 5
+#define DIED_MINED    0
+#define DIED_NATURAL  5
+#define NO_ORE_TARGET 7
 
 ////ASTEROID VARIABLES
 byte oreLayout[6];
@@ -22,7 +30,7 @@ byte missionCount = 6;
 byte missionComplete;
 byte gameComplete;
 byte isMining[6] = {false, false, false, false, false, false};
-byte oreTarget;
+byte oreTarget = NO_ORE_TARGET;
 byte oreCollected;
 int miningTime = 500;
 byte displayMissionCompleteColor;
@@ -244,7 +252,7 @@ void shipLoop() {
       displayMissionCompleteColor = oreTarget;
       displayMissionCompleteIndex = 0;
       resetTimer.set(0);
-      oreTarget = 7;//an ore that doesn't exist
+      oreTarget = NO_ORE_TARGET; //an ore that doesn't exist
       //oh, also, is gameComplete?
       if (missionCount == 1) {
         gameComplete = true;
@@ -279,7 +287,12 @@ bool isOrePresentAtIndex( byte i ) {
 
 void newMission() {
   missionComplete = false;
-  oreTarget = random(3) + 1;
+  byte newOreTarget = oreTarget;
+  while (newOreTarget == oreTarget) {
+    newOreTarget = random(3) + 1;
+  }
+  oreTarget = newOreTarget;
+
   oreCollected = 0;
 }
 
