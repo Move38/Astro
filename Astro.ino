@@ -39,6 +39,7 @@ byte displayMissionCompleteIndex = 0;
 
 void setup() {
   // put your setup code here, to run once:
+  randomize(); // make sure our astroid is unique
   newAsteroid();
   newMission();
 }
@@ -253,7 +254,8 @@ void shipLoop() {
       displayMissionCompleteColor = oreTarget;
       displayMissionCompleteIndex = 0;
       resetTimer.set(0);
-      oreTarget = NO_ORE_TARGET; //an ore that doesn't exist
+      // we'll get our next ore target, so no need to do this next line
+//      oreTarget = NO_ORE_TARGET; //an ore that doesn't exist
       //oh, also, is gameComplete?
       if (missionCount == 1) {
         gameComplete = true;
