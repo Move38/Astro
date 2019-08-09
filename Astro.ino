@@ -1,9 +1,18 @@
-/*  
- *   Astro
- *   by Move38, Inc. 2019
- *   Lead development by Dan King
- *   original game by Diamond and Colby
- * 
+/*
+ *  Astro
+ *  by Move38, Inc. 2019
+ *  Lead development by Dan King
+ *  original game by Diamond and Colby
+ *
+ *  Rules: https://github.com/Move38/Astro/blob/master/README.md
+ *  
+ *  --------------------
+ *  Blinks by Move38
+ *  Brought to life via Kickstarter 2018
+ *
+ *  @madewithblinks
+ *  www.move38.com
+ *  --------------------
  */
 
 #define RESET_INTERVAL 3000
