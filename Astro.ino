@@ -53,6 +53,7 @@ void setup() {
   // put your setup code here, to run once:
   randomize(); // make sure our astroid is unique
   newAsteroid();
+  updateAsteroid();
   newMission();
 }
 
